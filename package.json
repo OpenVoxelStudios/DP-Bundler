@@ -1,0 +1,17 @@
+{
+  "name": "dp-bundler",
+  "module": "index.ts",
+  "type": "module",
+  "devDependencies": {
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5.0.0"
+  },
+  "scripts": {
+    "start": "bun index.js",
+    "build-windows": "bun build ./index.ts --compile --minify --sourcemap --target bun-windows-x64 --outfile=./dist/dp_bundler-windows",
+    "build-mac": "bun build ./index.ts --compile --minify --sourcemap --target bun-darwin-arm64 --outfile=./dist/dp_bundler-mac",
+    "build": "bun run build-mac && bun run build-windows"
+  }
+}
