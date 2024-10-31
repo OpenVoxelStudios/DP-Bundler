@@ -1,0 +1,31 @@
+name: Release Publish
+
+on:
+  release:
+    types: [published]
+    
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2.0.1
+        with:
+          bun-version: "latest"
+          
+      - name: Install Dependencies
+        run: bun install
+      
+      - name: Build
+        run: |
+          bun run build
+
+      - name: Upload Build to Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release upload ${{ github.event.release.tag_name }} ./dist/dp_bundler-mac
+          gh release upload ${{ github.event.release.tag_name }} ./dist/dp_bundler-windows.exe
