@@ -11,7 +11,8 @@
   "scripts": {
     "start": "bun index.js",
     "build-windows": "bun build ./index.ts --compile --minify --sourcemap --target bun-windows-x64 --outfile=./dist/dp_bundler-windows",
-    "build-mac": "bun build ./index.ts --compile --minify --sourcemap --target bun-darwin-arm64 --outfile=./dist/dp_bundler-mac",
-    "build": "bun run build-mac && bun run build-windows"
+    "build-mac": "bun build ./index.ts --compile --minify --sourcemap --target bun-darwin-arm64 --outfile=./dist/dp_bundler-mac_arm && bun build ./index.ts --compile --minify --sourcemap --target bun-darwin-x64 --outfile=./dist/dp_bundler-mac_x64",
+    "build-linux": "bun build ./index.ts --compile --minify --sourcemap --target bun-linux-x64 --outfile=./dist/dp_bundler-linux_x64 && bun build ./index.ts --compile --minify --sourcemap --target bun-linux-arm64 --outfile=./dist/dp_bundler-linux_arm",
+    "build": "rm -rf ./dist && bun run build-mac && bun run build-windows && bun run build-linux"
   }
 }

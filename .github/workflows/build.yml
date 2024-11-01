@@ -27,5 +27,8 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release upload ${{ github.event.release.tag_name }} ./dist/dp_bundler-mac
+          gh release upload ${{ github.event.release.tag_name }} ./dist/dp_bundler-linux_arm
+          gh release upload ${{ github.event.release.tag_name }} ./dist/dp_bundler-linux_x64
+          gh release upload ${{ github.event.release.tag_name }} ./dist/dp_bundler-mac_arm
+          gh release upload ${{ github.event.release.tag_name }} ./dist/dp_bundler-mac_x64
           gh release upload ${{ github.event.release.tag_name }} ./dist/dp_bundler-windows.exe
