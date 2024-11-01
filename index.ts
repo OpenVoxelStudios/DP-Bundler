@@ -1,25 +1,22 @@
-import { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "fs";
+import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "fs";
 import { resolve, join, basename } from "path";
+import { input, select } from '@inquirer/prompts';
+import colors from 'yoctocolors-cjs';
 import Bun from 'bun';
 
 function format(path: string): string {
-    if (path.startsWith('"') || path.startsWith("'")) path = path.slice(1, -1);
+    return (path.startsWith('"') || path.startsWith("'")) ? path.slice(1, -1) : path;
+}
 
-    if (!existsSync(path)) throw new Error('The specified path does not exist');
-    return path;
-};
-
+const glob = new Bun.Glob('**/*');
 async function writePath(path: string) {
-    const glob = new Bun.Glob('**/*');
     for await (const file of glob.scan({ cwd: path, absolute: false, onlyFiles: true })) {
         mkdirSync(join(PATH, file, '..'), { recursive: true });
 
         if (file.startsWith('data/minecraft/tags/function/')) {
-            let content = [];
-            if (existsSync(join(PATH, file))) content = JSON.parse(readFileSync(join(PATH, file), { encoding: 'utf-8' })).values;
-
+            let content = existsSync(join(PATH, file)) ? JSON.parse(readFileSync(join(PATH, file), { encoding: 'utf-8' })).values : [];
             let final = JSON.parse(readFileSync(join(path, file), { encoding: 'utf-8' }));
-            final.values.push(...content);
+            final.values = final.values.concat(content);
 
             writeFileSync(join(PATH, file), JSON.stringify(final, null, 4), { encoding: 'utf-8' });
         }
@@ -27,18 +24,33 @@ async function writePath(path: string) {
     }
 };
 
-const mainDatapack = resolve(format(prompt('Enter the path for the MAIN datapack:') || ""));
+async function askPath(prompt: string): Promise<string> {
+    return resolve(format(await input({
+        message: prompt,
+        required: true,
+        validate: (value) => existsSync(resolve(format(value))) ? true : colors.red('Path does not exist')
+    })));
+};
 
-const secondaryDatapacks: string[] = ["/Users/nini/Library/Application Support/ModrinthApp/profiles/OVS/saves/doors testworld/datapacks/Doors Invasion AJ"];
+const mainFolder = await askPath('Path of your datapacks folder in your world:');
+const packList = readdirSync(mainFolder, { withFileTypes: true }).filter(f => f.isDirectory()).map(dir => dir.name);
 
-for (let i = ""; i = prompt('Enter another secondary path or press enter when you are done:') || "";) secondaryDatapacks.push(resolve(format(i)));
-secondaryDatapacks.reverse();
-console.log('\nDone asking for datapack path, bundling everything into one');
-console.log('NOTE: The MAIN datapack will override the secondary ones (pack.png, pack.mcmeta..)');
+const mainDatapack = await select({
+    message: 'Please select the main datapack (the pack.png & pack.mcmeta will override the others):',
+    choices: packList.map((p, i) => {
+        return {
+            name: p,
+            value: p,
+        }
+    }),
+});
 
-const PATH = join(__dirname, basename(mainDatapack));
+const secondaryDatapacks = packList.filter(p => p != mainDatapack).concat(mainDatapack);
+console.time(`Bundling ${secondaryDatapacks.length} datapacks into one...`);
+
+const PATH = join(__dirname, mainDatapack);
 if (existsSync(PATH)) rmSync(PATH, { recursive: true });
 mkdirSync(PATH, { recursive: true });
+for (const path of secondaryDatapacks) await writePath(join(mainFolder, path));
 
-for (const path of secondaryDatapacks) await writePath(path);
-await writePath(mainDatapack);
+console.timeEnd(`Bundling ${secondaryDatapacks.length} datapacks into one...`);
