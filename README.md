@@ -8,7 +8,7 @@ Bundles multiple datapacks into one! Practical for releasing one datapack based 
 
 This **reduces the size** of your datapack!
 
-When using on my [Doors Infestation]() project, it reduced by almost 9% (from 4.6MB to 4.2MB)! (with all options enabled)
+When using on my [Doors Infestation](https://modrinth.com/datapack/doors-invasion) project, it reduced by almost 9% (from 4.6MB to 4.2MB)! (with all options enabled)
 
 ![Size reduction](./assets/size.png)
 
@@ -44,3 +44,10 @@ bun install
 # Run the code
 bun index.ts
 ```
+
+
+## LICENSE
+
+Code available under the MIT license
+
+Copyright (c) 2024 OpenVoxel Studios
