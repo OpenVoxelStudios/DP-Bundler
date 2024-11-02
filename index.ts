@@ -1,17 +1,19 @@
 import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "fs";
-import { confirm, input, select } from '@inquirer/prompts';
+import { checkbox, confirm, input, select } from '@inquirer/prompts';
 import colors from 'yoctocolors-cjs';
 import { resolve, join } from "path";
 import Bun, { $ } from 'bun';
 
+type optionType = ('remove_empty_lines' | 'remove_comments' | 'remove_useless_files')[];
 const OS: 'win' | 'linux' | 'darwin' = require(`os`).platform().toLowerCase().replace(/[0-9]/g, ``);
+const glob = new Bun.Glob('**/*');
+const whitelistFiles = ['pack.png', 'pack.mcmeta'];
 
 function format(path: string): string {
     return ((path.startsWith('"') || path.startsWith("'")) ? path.slice(1, -1) : path).trim();
 }
 
-const glob = new Bun.Glob('**/*');
-async function writePath(PATH: string, path: string) {
+async function writePath(PATH: string, path: string, options: optionType) {
     for await (const file of glob.scan({ cwd: path, absolute: false, onlyFiles: true })) {
         mkdirSync(join(PATH, file, '..'), { recursive: true });
 
@@ -20,12 +22,26 @@ async function writePath(PATH: string, path: string) {
             let final = JSON.parse(readFileSync(join(path, file), { encoding: 'utf-8' }));
             final.values = final.values.concat(content);
 
-            writeFileSync(join(PATH, file), JSON.stringify(final, null, 4), { encoding: 'utf-8' });
+            writeFileSync(join(PATH, file), JSON.stringify(final, null, options.includes('remove_empty_lines') ? 0 : 4), { encoding: 'utf-8' });
         }
         else {
-            if (['pack.png', 'pack.mcmeta'].includes(file) || !existsSync(join(PATH, file)) || await confirm({
+            if (whitelistFiles.includes(file) || !existsSync(join(PATH, file)) || await confirm({
                 message: `File ${colors.underline(file)} has a conflict. Overwrite it with file from datapack ${colors.underline(path)}?`,
-            })) copyFileSync(join(path, file), join(PATH, file));
+            })) {
+                if (options.includes('remove_useless_files') && !whitelistFiles.includes(file) && !(file.endsWith('.json') || file.endsWith('.mcfunction') || file.endsWith('.nbt'))) continue;
+                if (options.length == 0) copyFileSync(join(path, file), join(PATH, file));
+                else {
+                    let content = readFileSync(join(path, file), { encoding: 'utf-8' });
+
+                    if (options.includes('remove_comments')) content = content.split('\n').filter(line => !line.trim().startsWith('#')).join('\n');
+                    if (options.includes('remove_empty_lines')) {
+                        if (file.endsWith('.json')) content = JSON.stringify(JSON.parse(content), null, 0);
+                        else content = content.split('\n\n').map(line => line.trim()).join('\n');
+                    }
+
+                    writeFileSync(join(PATH, file), content, { encoding: 'utf-8' });
+                }
+            }
         };
     };
 };
@@ -67,15 +83,25 @@ async function main() {
     })) throw new Error('Action cancelled.');
 
 
+    const OPTIONS: optionType = await checkbox({
+        message: 'Select options for the bundle:',
+        choices: [
+            { name: 'Remove Empty Lines', value: 'remove_empty_lines' },
+            { name: 'Remove Comments', value: 'remove_comments' },
+            { name: 'Remove Non .json/.mcfunction/.nbt Files', value: 'remove_useless_files' },
+        ],
+    });
+
+
     if (existsSync(PATH)) await timeIt(`${colors.green('✔')} Deleted previous build.`, () => {
         rmSync(PATH, { recursive: true });
         mkdirSync(PATH, { recursive: true });
     });
 
-    await timeIt(`${colors.green('✔')} Bundled ${secondaryDatapacks.length} datapacks into one.`, async () => {
+    await timeIt(`${colors.green('✔')} Finished bundling ${secondaryDatapacks.length} datapacks into one.`, async () => {
         for (const path of secondaryDatapacks) {
             await timeIt(`${colors.green('✔')} Added ${colors.bold(path)}.`, async () => {
-                await writePath(PATH, join(mainFolder, path));
+                await writePath(PATH, join(mainFolder, path), OPTIONS);
             });
         };
     });
